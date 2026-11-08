@@ -69,7 +69,7 @@ public class OrderItem {
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "item_status", nullable = false, length = 30)
-    private OrderItemStatus itemStatus = OrderItemStatus.PROCESSING;
+    private OrderItemStatus itemStatus = OrderItemStatus.PENDING_SELLER_ACCEPTANCE;
 
     @Column(name = "delivered_at")
     private Instant deliveredAt;
@@ -93,7 +93,7 @@ public class OrderItem {
         this.allocatedDiscount = allocatedDiscount != null ? allocatedDiscount : BigDecimal.ZERO;
         BigDecimal gross = unitPrice.multiply(BigDecimal.valueOf(quantity));
         this.netPaidAmount = gross.subtract(this.allocatedDiscount).max(BigDecimal.ZERO);
-        this.itemStatus = OrderItemStatus.PROCESSING;
+        this.itemStatus = OrderItemStatus.PENDING_SELLER_ACCEPTANCE;
     }
 
     @PrePersist
@@ -108,7 +108,7 @@ public class OrderItem {
             this.netPaidAmount = gross.subtract(this.allocatedDiscount).max(BigDecimal.ZERO);
         }
         if (this.itemStatus == null) {
-            this.itemStatus = OrderItemStatus.PROCESSING;
+            this.itemStatus = OrderItemStatus.PENDING_SELLER_ACCEPTANCE;
         }
     }
 

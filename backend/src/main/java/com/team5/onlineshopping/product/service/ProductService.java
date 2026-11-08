@@ -1,8 +1,11 @@
 package com.team5.onlineshopping.product.service;
 
+import com.team5.onlineshopping.common.enums.OrderItemStatus;
 import com.team5.onlineshopping.common.enums.Role;
 import com.team5.onlineshopping.common.exception.BadRequestException;
 import com.team5.onlineshopping.common.exception.ResourceNotFoundException;
+import com.team5.onlineshopping.order.entity.OrderItem;
+import com.team5.onlineshopping.order.repository.OrderItemRepository;
 import com.team5.onlineshopping.product.dto.ProductCreateRequest;
 import com.team5.onlineshopping.product.dto.ProductResponse;
 import com.team5.onlineshopping.product.dto.ProductReviewRequest;
@@ -27,13 +30,16 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductReviewRepository productReviewRepository;
     private final UserRepository userRepository;
+    private final OrderItemRepository orderItemRepository;
 
     public ProductService(ProductRepository productRepository,
                           ProductReviewRepository productReviewRepository,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          OrderItemRepository orderItemRepository) {
         this.productRepository = productRepository;
         this.productReviewRepository = productReviewRepository;
         this.userRepository = userRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     @Transactional(readOnly = true)
@@ -186,8 +192,30 @@ public class ProductService {
         User customer = userRepository.findById(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + customerId));
 
-        if (productReviewRepository.findByProductIdAndCustomerId(productId, customerId).isPresent()) {
-            throw new BadRequestException("You have already reviewed this product");
+        OrderItem orderItem = null;
+        if (request.getOrderItemId() != null) {
+            orderItem = orderItemRepository.findById(request.getOrderItemId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Order item not found with id: " + request.getOrderItemId()));
+
+            // Verify order item matches product and customer
+            if (!orderItem.getProduct().getId().equals(productId)) {
+                throw new BadRequestException("Order item does not match product: " + productId);
+            }
+            if (!orderItem.getOrder().getCustomer().getId().equals(customerId)) {
+                throw new BadRequestException("Order item does not belong to customer: " + customerId);
+            }
+            // Per V2 contract: Enforce one eligible review per delivered OrderItem
+            if (orderItem.getItemStatus() != OrderItemStatus.DELIVERED) {
+                throw new BadRequestException("Reviews can only be submitted for delivered order items");
+            }
+            if (productReviewRepository.findByOrderItemId(orderItem.getId()).isPresent()) {
+                throw new BadRequestException("This order item has already been reviewed");
+            }
+        } else {
+            // Fallback for Phase 2 test suite/transitional calls before checkout/delivery modules are linked
+            if (productReviewRepository.findByProductIdAndCustomerId(productId, customerId).isPresent()) {
+                throw new BadRequestException("You have already reviewed this product");
+            }
         }
 
         ProductReview review = new ProductReview(
@@ -196,6 +224,9 @@ public class ProductService {
                 request.getRating(),
                 request.getComment()
         );
+        if (orderItem != null) {
+            review.setOrderItem(orderItem);
+        }
 
         ProductReview savedReview = productReviewRepository.save(review);
 

@@ -79,6 +79,16 @@ public class ReturnRequest {
     @Column(name = "rejection_reason")
     private String rejectionReason;
 
+    @Column(name = "eligibility_policy_snapshot", columnDefinition = "TEXT")
+    private String eligibilityPolicySnapshot;
+
+    @Size(max = 50)
+    @Column(name = "inspection_condition", length = 50)
+    private String inspectionCondition;
+
+    @Column(name = "is_restockable")
+    private Boolean isRestockable;
+
     @Column(name = "requested_at", nullable = false)
     private Instant requestedAt;
 
@@ -211,6 +221,30 @@ public class ReturnRequest {
 
     public void setRejectionReason(String rejectionReason) {
         this.rejectionReason = rejectionReason;
+    }
+
+    public String getEligibilityPolicySnapshot() {
+        return eligibilityPolicySnapshot;
+    }
+
+    public void setEligibilityPolicySnapshot(String eligibilityPolicySnapshot) {
+        this.eligibilityPolicySnapshot = eligibilityPolicySnapshot;
+    }
+
+    public String getInspectionCondition() {
+        return inspectionCondition;
+    }
+
+    public void setInspectionCondition(String inspectionCondition) {
+        this.inspectionCondition = inspectionCondition;
+    }
+
+    public Boolean getIsRestockable() {
+        return isRestockable;
+    }
+
+    public void setIsRestockable(Boolean isRestockable) {
+        this.isRestockable = isRestockable;
     }
 
     public Instant getRequestedAt() {

@@ -2,6 +2,7 @@ package com.team5.onlineshopping.postpurchase.entity;
 
 import com.team5.onlineshopping.common.enums.RefundStatus;
 import com.team5.onlineshopping.order.entity.Order;
+import com.team5.onlineshopping.order.entity.OrderItem;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -44,6 +45,14 @@ public class RefundTransaction {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "return_request_id")
     private ReturnRequest returnRequest;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_item_id")
+    private OrderItem orderItem;
+
+    @Size(max = 128)
+    @Column(name = "idempotency_key", length = 128, unique = true)
+    private String idempotencyKey;
 
     @NotNull
     @DecimalMin("0.01")
@@ -129,6 +138,22 @@ public class RefundTransaction {
 
     public void setReturnRequest(ReturnRequest returnRequest) {
         this.returnRequest = returnRequest;
+    }
+
+    public OrderItem getOrderItem() {
+        return orderItem;
+    }
+
+    public void setOrderItem(OrderItem orderItem) {
+        this.orderItem = orderItem;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
     }
 
     public BigDecimal getAmount() {

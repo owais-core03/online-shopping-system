@@ -1,5 +1,6 @@
 package com.team5.onlineshopping.product.entity;
 
+import com.team5.onlineshopping.order.entity.OrderItem;
 import com.team5.onlineshopping.user.entity.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -35,6 +36,10 @@ public class ProductReview {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private User customer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_item_id")
+    private OrderItem orderItem;
 
     @NotNull
     @Min(1)
@@ -98,6 +103,14 @@ public class ProductReview {
 
     public void setCustomer(User customer) {
         this.customer = customer;
+    }
+
+    public OrderItem getOrderItem() {
+        return orderItem;
+    }
+
+    public void setOrderItem(OrderItem orderItem) {
+        this.orderItem = orderItem;
     }
 
     public Integer getRating() {

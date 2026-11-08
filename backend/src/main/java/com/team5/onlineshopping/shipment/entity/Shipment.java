@@ -62,6 +62,22 @@ public class Shipment {
     @Column(name = "tracking_number", length = 100)
     private String trackingNumber;
 
+    @Column(name = "delivery_otp_hash", length = 128)
+    private String deliveryOtpHash;
+
+    @Column(name = "otp_expires_at")
+    private Instant otpExpiresAt;
+
+    @Column(name = "otp_attempts", nullable = false)
+    private Integer otpAttempts = 0;
+
+    @Size(max = 500)
+    @Column(name = "failure_reason", length = 500)
+    private String failureReason;
+
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
     @Column(name = "dispatched_at")
     private Instant dispatchedAt;
 
@@ -93,6 +109,9 @@ public class Shipment {
         this.updatedAt = Instant.now();
         if (this.deliveryStatus == null) {
             this.deliveryStatus = DeliveryStatus.UNASSIGNED;
+        }
+        if (this.otpAttempts == null) {
+            this.otpAttempts = 0;
         }
     }
 
@@ -165,6 +184,46 @@ public class Shipment {
 
     public void setTrackingNumber(String trackingNumber) {
         this.trackingNumber = trackingNumber;
+    }
+
+    public String getDeliveryOtpHash() {
+        return deliveryOtpHash;
+    }
+
+    public void setDeliveryOtpHash(String deliveryOtpHash) {
+        this.deliveryOtpHash = deliveryOtpHash;
+    }
+
+    public Instant getOtpExpiresAt() {
+        return otpExpiresAt;
+    }
+
+    public void setOtpExpiresAt(Instant otpExpiresAt) {
+        this.otpExpiresAt = otpExpiresAt;
+    }
+
+    public Integer getOtpAttempts() {
+        return otpAttempts;
+    }
+
+    public void setOtpAttempts(Integer otpAttempts) {
+        this.otpAttempts = otpAttempts;
+    }
+
+    public String getFailureReason() {
+        return failureReason;
+    }
+
+    public void setFailureReason(String failureReason) {
+        this.failureReason = failureReason;
+    }
+
+    public String getNotes() {
+        return notes;
+    }
+
+    public void setNotes(String notes) {
+        this.notes = notes;
     }
 
     public Instant getDispatchedAt() {

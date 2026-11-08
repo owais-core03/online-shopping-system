@@ -3,6 +3,7 @@ package com.team5.onlineshopping.product;
 import com.team5.onlineshopping.common.enums.Role;
 import com.team5.onlineshopping.common.exception.BadRequestException;
 import com.team5.onlineshopping.common.exception.ResourceNotFoundException;
+import com.team5.onlineshopping.order.repository.OrderItemRepository;
 import com.team5.onlineshopping.product.dto.ProductCreateRequest;
 import com.team5.onlineshopping.product.dto.ProductResponse;
 import com.team5.onlineshopping.product.dto.ProductReviewRequest;
@@ -44,6 +45,9 @@ class ProductServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private OrderItemRepository orderItemRepository;
 
     @InjectMocks
     private ProductService productService;

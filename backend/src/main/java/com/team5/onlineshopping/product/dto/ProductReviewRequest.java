@@ -15,12 +15,20 @@ public class ProductReviewRequest {
     @Size(max = 2000, message = "Comment cannot exceed 2000 characters")
     private String comment;
 
+    private Long orderItemId;
+
     public ProductReviewRequest() {
     }
 
     public ProductReviewRequest(Integer rating, String comment) {
         this.rating = rating;
         this.comment = comment;
+    }
+
+    public ProductReviewRequest(Integer rating, String comment, Long orderItemId) {
+        this.rating = rating;
+        this.comment = comment;
+        this.orderItemId = orderItemId;
     }
 
     public Integer getRating() {
@@ -37,5 +45,13 @@ public class ProductReviewRequest {
 
     public void setComment(String comment) {
         this.comment = comment;
+    }
+
+    public Long getOrderItemId() {
+        return orderItemId;
+    }
+
+    public void setOrderItemId(Long orderItemId) {
+        this.orderItemId = orderItemId;
     }
 }
