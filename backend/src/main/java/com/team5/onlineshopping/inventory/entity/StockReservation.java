@@ -46,8 +46,8 @@ public class StockReservation {
 
     @NotBlank
     @Size(max = 64)
-    @Column(name = "order_reference", nullable = false, length = 64)
-    private String orderReference;
+    @Column(name = "checkout_reference", nullable = false, length = 64)
+    private String checkoutReference;
 
     @NotNull
     @Enumerated(EnumType.STRING)
@@ -70,10 +70,10 @@ public class StockReservation {
     public StockReservation() {
     }
 
-    public StockReservation(String reservationCode, User customer, String orderReference) {
+    public StockReservation(String reservationCode, User customer, String checkoutReference) {
         this.reservationCode = reservationCode;
         this.customer = customer;
-        this.orderReference = orderReference;
+        this.checkoutReference = checkoutReference;
         this.status = ReservationStatus.ACTIVE;
         this.expiresAt = Instant.now().plus(15, ChronoUnit.MINUTES);
     }
@@ -129,12 +129,26 @@ public class StockReservation {
         this.customer = customer;
     }
 
-    public String getOrderReference() {
-        return orderReference;
+    public String getCheckoutReference() {
+        return checkoutReference;
     }
 
+    public void setCheckoutReference(String checkoutReference) {
+        this.checkoutReference = checkoutReference;
+    }
+
+    /**
+     * Backward-compatible alias for getCheckoutReference().
+     */
+    public String getOrderReference() {
+        return checkoutReference;
+    }
+
+    /**
+     * Backward-compatible alias for setCheckoutReference().
+     */
     public void setOrderReference(String orderReference) {
-        this.orderReference = orderReference;
+        this.checkoutReference = orderReference;
     }
 
     public ReservationStatus getStatus() {

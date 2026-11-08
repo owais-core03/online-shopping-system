@@ -113,4 +113,35 @@ class JwtServiceTest {
         assertThat(token1).isNotBlank();
         assertThat(token2).isNotBlank();
     }
+
+    @Test
+    @DisplayName("validateConfiguration() throws IllegalStateException when secretKey is null or blank")
+    void validateConfiguration_throwsOnMissingSecret() {
+        JwtService service = new JwtService();
+        ReflectionTestUtils.setField(service, "secretKey", "");
+
+        assertThatThrownBy(service::validateConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("JWT secret key is missing");
+    }
+
+    @Test
+    @DisplayName("validateConfiguration() throws IllegalStateException when secretKey is shorter than 256 bits")
+    void validateConfiguration_throwsOnShortSecret() {
+        JwtService service = new JwtService();
+        ReflectionTestUtils.setField(service, "secretKey", "short-secret");
+
+        assertThatThrownBy(service::validateConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("JWT secret key is too short");
+    }
+
+    @Test
+    @DisplayName("validateConfiguration() succeeds with 256-bit valid secret")
+    void validateConfiguration_succeedsWithValidSecret() {
+        JwtService service = new JwtService();
+        ReflectionTestUtils.setField(service, "secretKey", TEST_SECRET);
+
+        service.validateConfiguration();
+    }
 }

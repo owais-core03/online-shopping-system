@@ -50,10 +50,18 @@ class EnumContractTest {
     // ─── OrderItemStatus ──────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("OrderItemStatus contains PROCESSING state")
-    void orderItemStatus_containsProcessing() {
+    @DisplayName("OrderItemStatus contains all Version 2.0 contract states")
+    void orderItemStatus_containsAllV2ContractStates() {
         EnumSet<OrderItemStatus> statuses = EnumSet.allOf(OrderItemStatus.class);
-        assertThat(statuses).contains(OrderItemStatus.PROCESSING);
+        assertThat(statuses).containsExactlyInAnyOrder(
+                OrderItemStatus.PENDING_SELLER_ACCEPTANCE,
+                OrderItemStatus.PROCESSING,
+                OrderItemStatus.REJECTED,
+                OrderItemStatus.PACKED,
+                OrderItemStatus.DISPATCHED,
+                OrderItemStatus.DELIVERED,
+                OrderItemStatus.CANCELLED
+        );
     }
 
     @Test
@@ -93,30 +101,51 @@ class EnumContractTest {
     // ─── DeliveryStatus ───────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("DeliveryStatus contains DELIVERY_FAILED, RETURN_TO_SELLER, RETURNED_TO_SELLER")
-    void deliveryStatus_hasReturnValues() {
+    @DisplayName("DeliveryStatus contains all Version 2.0 contract states")
+    void deliveryStatus_hasAllV2Values() {
         EnumSet<DeliveryStatus> statuses = EnumSet.allOf(DeliveryStatus.class);
-        assertThat(statuses).contains(
+        assertThat(statuses).containsExactlyInAnyOrder(
+                DeliveryStatus.UNASSIGNED,
+                DeliveryStatus.ASSIGNED,
+                DeliveryStatus.PICKED_UP,
+                DeliveryStatus.IN_TRANSIT,
+                DeliveryStatus.OUT_FOR_DELIVERY,
                 DeliveryStatus.DELIVERY_FAILED,
                 DeliveryStatus.RETURN_TO_SELLER,
-                DeliveryStatus.RETURNED_TO_SELLER
+                DeliveryStatus.RETURNED_TO_SELLER,
+                DeliveryStatus.DELIVERED
         );
     }
 
     // ─── ReturnStatus ─────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("ReturnStatus has at least one value")
-    void returnStatus_hasValues() {
-        assertThat(ReturnStatus.values()).isNotEmpty();
+    @DisplayName("ReturnStatus contains all Version 2.0 contract states")
+    void returnStatus_hasAllV2Values() {
+        EnumSet<ReturnStatus> statuses = EnumSet.allOf(ReturnStatus.class);
+        assertThat(statuses).containsExactlyInAnyOrder(
+                ReturnStatus.REQUESTED,
+                ReturnStatus.APPROVED,
+                ReturnStatus.REJECTED,
+                ReturnStatus.PICKUP_SCHEDULED,
+                ReturnStatus.RECEIVED,
+                ReturnStatus.INSPECTED,
+                ReturnStatus.COMPLETED
+        );
     }
 
     // ─── RefundStatus ─────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("RefundStatus has at least one value")
-    void refundStatus_hasValues() {
-        assertThat(RefundStatus.values()).isNotEmpty();
+    @DisplayName("RefundStatus contains all Version 2.0 contract states")
+    void refundStatus_hasAllV2Values() {
+        EnumSet<RefundStatus> statuses = EnumSet.allOf(RefundStatus.class);
+        assertThat(statuses).containsExactlyInAnyOrder(
+                RefundStatus.INITIATED,
+                RefundStatus.PROCESSING,
+                RefundStatus.COMPLETED,
+                RefundStatus.FAILED
+        );
     }
 
     // ─── DiscountType ─────────────────────────────────────────────────────────

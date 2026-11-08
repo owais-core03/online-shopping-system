@@ -71,6 +71,9 @@ public class OrderItem {
     @Column(name = "item_status", nullable = false, length = 30)
     private OrderItemStatus itemStatus = OrderItemStatus.PROCESSING;
 
+    @Column(name = "delivered_at")
+    private Instant deliveredAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -184,6 +187,14 @@ public class OrderItem {
 
     public void setItemStatus(OrderItemStatus itemStatus) {
         this.itemStatus = itemStatus;
+    }
+
+    public Instant getDeliveredAt() {
+        return deliveredAt;
+    }
+
+    public void setDeliveredAt(Instant deliveredAt) {
+        this.deliveredAt = deliveredAt;
     }
 
     public Instant getCreatedAt() {
