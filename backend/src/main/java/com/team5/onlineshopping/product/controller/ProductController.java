@@ -39,9 +39,48 @@ public class ProductController {
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getProducts(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String brand) {
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false, defaultValue = "id") String sortBy,
+            @RequestParam(required = false, defaultValue = "asc") String sortDirection) {
+
+        if (page != null || size != null) {
+            int pageIndex = (page != null && page >= 0) ? page : 0;
+            int pageSize = (size != null && size > 0) ? Math.min(size, 100) : 20;
+
+            org.springframework.data.domain.Sort.Direction direction =
+                    "desc".equalsIgnoreCase(sortDirection)
+                            ? org.springframework.data.domain.Sort.Direction.DESC
+                            : org.springframework.data.domain.Sort.Direction.ASC;
+
+            String sortField = sanitizeSortField(sortBy);
+            org.springframework.data.domain.Pageable pageable =
+                    org.springframework.data.domain.PageRequest.of(pageIndex, pageSize, org.springframework.data.domain.Sort.by(direction, sortField));
+
+            org.springframework.data.domain.Page<ProductResponse> productPage =
+                    productService.searchProducts(query, category, brand, pageable);
+
+            return ResponseEntity.ok(ApiResponse.success("Products retrieved successfully", productPage.getContent()));
+        }
+
         List<ProductResponse> products = productService.searchProducts(query, category, brand);
         return ResponseEntity.ok(ApiResponse.success("Products retrieved successfully", products));
+    }
+
+    private String sanitizeSortField(String sortBy) {
+        if (sortBy == null) {
+            return "id";
+        }
+        return switch (sortBy.toLowerCase()) {
+            case "name" -> "name";
+            case "price" -> "price";
+            case "brand" -> "brand";
+            case "category" -> "category";
+            case "averagerating", "rating" -> "averageRating";
+            case "createdat" -> "createdAt";
+            default -> "id";
+        };
     }
 
     @GetMapping("/{id}")

@@ -53,20 +53,31 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public List<ProductResponse> searchProducts(String query, String category, String brand) {
-        List<Product> products;
-        if (query != null && !query.trim().isEmpty()) {
-            products = productRepository.searchActiveProducts(query.trim());
-        } else if (category != null && !category.trim().isEmpty()) {
-            products = productRepository.findByCategoryIgnoreCaseAndIsActiveTrue(category.trim());
-        } else if (brand != null && !brand.trim().isEmpty()) {
-            products = productRepository.findByBrandIgnoreCaseAndIsActiveTrue(brand.trim());
-        } else {
-            products = productRepository.findByIsActiveTrue();
-        }
+        String cleanQuery = (query != null && !query.trim().isEmpty()) ? query.trim() : null;
+        String cleanCategory = (category != null && !category.trim().isEmpty()) ? category.trim() : null;
+        String cleanBrand = (brand != null && !brand.trim().isEmpty()) ? brand.trim() : null;
+
+        List<Product> products = productRepository.searchActiveProducts(cleanQuery, cleanCategory, cleanBrand);
 
         return products.stream()
                 .map(ProductResponse::fromEntity)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<ProductResponse> searchProducts(
+            String query,
+            String category,
+            String brand,
+            org.springframework.data.domain.Pageable pageable) {
+        String cleanQuery = (query != null && !query.trim().isEmpty()) ? query.trim() : null;
+        String cleanCategory = (category != null && !category.trim().isEmpty()) ? category.trim() : null;
+        String cleanBrand = (brand != null && !brand.trim().isEmpty()) ? brand.trim() : null;
+
+        org.springframework.data.domain.Page<Product> productPage =
+                productRepository.searchActiveProducts(cleanQuery, cleanCategory, cleanBrand, pageable);
+
+        return productPage.map(ProductResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)
@@ -113,13 +124,22 @@ public class ProductService {
             throw new BadRequestException("You are not authorized to update this product");
         }
 
-        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+        if (request.getName() != null) {
+            if (request.getName().trim().isEmpty()) {
+                throw new BadRequestException("Product name cannot be blank");
+            }
             product.setName(request.getName().trim());
         }
-        if (request.getBrand() != null && !request.getBrand().trim().isEmpty()) {
+        if (request.getBrand() != null) {
+            if (request.getBrand().trim().isEmpty()) {
+                throw new BadRequestException("Brand cannot be blank");
+            }
             product.setBrand(request.getBrand().trim());
         }
-        if (request.getCategory() != null && !request.getCategory().trim().isEmpty()) {
+        if (request.getCategory() != null) {
+            if (request.getCategory().trim().isEmpty()) {
+                throw new BadRequestException("Category cannot be blank");
+            }
             product.setCategory(request.getCategory().trim());
         }
         if (request.getDescription() != null) {

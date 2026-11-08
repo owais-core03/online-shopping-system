@@ -156,4 +156,102 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.id").value(300L))
                 .andExpect(jsonPath("$.data.rating").value(5));
     }
+
+    @Test
+    @DisplayName("GET /api/products with pagination and sorting returns 200 OK")
+    void getProductsWithPaginationAndSorting() throws Exception {
+        ProductResponse product = new ProductResponse();
+        product.setId(10L);
+        product.setName("Wireless Keyboard");
+        product.setPrice(new BigDecimal("79.99"));
+
+        org.springframework.data.domain.Page<ProductResponse> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(product));
+
+        when(productService.searchProducts(eq("keyboard"), eq("Accessories"), eq("Logitech"), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/products")
+                        .param("query", "keyboard")
+                        .param("category", "Accessories")
+                        .param("brand", "Logitech")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortBy", "price")
+                        .param("sortDirection", "desc")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data[0].id").value(10L))
+                .andExpect(jsonPath("$.data[0].name").value("Wireless Keyboard"));
+    }
+
+    @Test
+    @DisplayName("POST /api/products with invalid body returns 400 Bad Request")
+    void createProductInvalidBodyReturnsBadRequest() throws Exception {
+        User sellerUser = new User("seller@shop.com", "hash", "Shop Seller", "+123", Role.SELLER);
+        sellerUser.setId(15L);
+        CustomUserDetails sellerPrincipal = new CustomUserDetails(sellerUser);
+
+        // Blank name and negative price
+        ProductCreateRequest invalidRequest = new ProductCreateRequest(
+                "", "", "", "desc", null, new BigDecimal("-10.00"), -5
+        );
+
+        mockMvc.perform(post("/api/products")
+                        .with(csrf())
+                        .with(user(sellerPrincipal))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("POST /api/products without authentication returns 403 or 401")
+    void createProductUnauthenticatedReturnsUnauthorized() throws Exception {
+        ProductCreateRequest request = new ProductCreateRequest(
+                "Monitor", "LG", "Displays", "desc", null, new BigDecimal("200.00"), 5
+        );
+
+        mockMvc.perform(post("/api/products")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/products/seller/my-products requires SELLER or ADMIN role")
+    void getMyProductsRequiresSellerRole() throws Exception {
+        User customerUser = new User("cust@shop.com", "hash", "Customer", "+123", Role.CUSTOMER);
+        customerUser.setId(30L);
+        CustomUserDetails customerPrincipal = new CustomUserDetails(customerUser);
+
+        mockMvc.perform(get("/api/products/seller/my-products")
+                        .with(user(customerPrincipal))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("POST /api/products/{id}/reviews with invalid rating returns 400 Bad Request")
+    void addReviewInvalidRatingReturnsBadRequest() throws Exception {
+        User customerUser = new User("cust@shop.com", "hash", "Bob Cust", "+123", Role.CUSTOMER);
+        customerUser.setId(30L);
+        CustomUserDetails customerPrincipal = new CustomUserDetails(customerUser);
+
+        // Rating > 5
+        ProductReviewRequest invalidReview = new ProductReviewRequest(6, "Invalid rating");
+
+        mockMvc.perform(post("/api/products/5/reviews")
+                        .with(csrf())
+                        .with(user(customerPrincipal))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidReview)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.errorCode").value("VALIDATION_ERROR"));
+    }
 }

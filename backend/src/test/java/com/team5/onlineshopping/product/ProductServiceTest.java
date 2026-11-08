@@ -218,4 +218,152 @@ class ProductServiceTest {
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("You have already reviewed this product");
     }
+
+    @Test
+    @DisplayName("searchProducts applies combined filters with AND logic: query only")
+    void searchProductsQueryOnly() {
+        when(productRepository.searchActiveProducts("sony", null, null)).thenReturn(List.of(product));
+
+        List<ProductResponse> results = productService.searchProducts("sony", null, null);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getName()).isEqualTo("Wireless Noise-Canceling Headphones");
+        verify(productRepository).searchActiveProducts("sony", null, null);
+    }
+
+    @Test
+    @DisplayName("searchProducts applies combined filters with AND logic: category only")
+    void searchProductsCategoryOnly() {
+        when(productRepository.searchActiveProducts(null, "Electronics", null)).thenReturn(List.of(product));
+
+        List<ProductResponse> results = productService.searchProducts(null, "Electronics", null);
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getCategory()).isEqualTo("Electronics");
+        verify(productRepository).searchActiveProducts(null, "Electronics", null);
+    }
+
+    @Test
+    @DisplayName("searchProducts applies combined filters with AND logic: brand only")
+    void searchProductsBrandOnly() {
+        when(productRepository.searchActiveProducts(null, null, "Sony")).thenReturn(List.of(product));
+
+        List<ProductResponse> results = productService.searchProducts(null, null, "Sony");
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getBrand()).isEqualTo("Sony");
+        verify(productRepository).searchActiveProducts(null, null, "Sony");
+    }
+
+    @Test
+    @DisplayName("searchProducts applies combined filters: query and category together")
+    void searchProductsQueryAndCategory() {
+        when(productRepository.searchActiveProducts("headphones", "Electronics", null)).thenReturn(List.of(product));
+
+        List<ProductResponse> results = productService.searchProducts("headphones", "Electronics", null);
+
+        assertThat(results).hasSize(1);
+        verify(productRepository).searchActiveProducts("headphones", "Electronics", null);
+    }
+
+    @Test
+    @DisplayName("searchProducts applies combined filters: query and brand together")
+    void searchProductsQueryAndBrand() {
+        when(productRepository.searchActiveProducts("headphones", null, "Sony")).thenReturn(List.of(product));
+
+        List<ProductResponse> results = productService.searchProducts("headphones", null, "Sony");
+
+        assertThat(results).hasSize(1);
+        verify(productRepository).searchActiveProducts("headphones", null, "Sony");
+    }
+
+    @Test
+    @DisplayName("searchProducts applies combined filters: category and brand together")
+    void searchProductsCategoryAndBrand() {
+        when(productRepository.searchActiveProducts(null, "Electronics", "Sony")).thenReturn(List.of(product));
+
+        List<ProductResponse> results = productService.searchProducts(null, "Electronics", "Sony");
+
+        assertThat(results).hasSize(1);
+        verify(productRepository).searchActiveProducts(null, "Electronics", "Sony");
+    }
+
+    @Test
+    @DisplayName("searchProducts applies combined filters: all three filters together")
+    void searchProductsAllFilters() {
+        when(productRepository.searchActiveProducts("headphones", "Electronics", "Sony")).thenReturn(List.of(product));
+
+        List<ProductResponse> results = productService.searchProducts("headphones", "Electronics", "Sony");
+
+        assertThat(results).hasSize(1);
+        verify(productRepository).searchActiveProducts("headphones", "Electronics", "Sony");
+    }
+
+    @Test
+    @DisplayName("searchProducts returns empty list when no matches found")
+    void searchProductsNoMatches() {
+        when(productRepository.searchActiveProducts("nonexistent", null, null)).thenReturn(List.of());
+
+        List<ProductResponse> results = productService.searchProducts("nonexistent", null, null);
+
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    @DisplayName("searchProducts with Pageable returns paged product responses")
+    void searchProductsPaged() {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+        org.springframework.data.domain.Page<Product> paged = new org.springframework.data.domain.PageImpl<>(List.of(product), pageable, 1);
+        when(productRepository.searchActiveProducts("sony", "Electronics", "Sony", pageable)).thenReturn(paged);
+
+        org.springframework.data.domain.Page<ProductResponse> result = productService.searchProducts("sony", "Electronics", "Sony", pageable);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Wireless Noise-Canceling Headphones");
+    }
+
+    @Test
+    @DisplayName("updateProduct by ADMIN succeeds even if not product seller")
+    void updateProductByAdminSuccess() {
+        User admin = new User("admin@example.com", "hash", "Admin User", null, Role.ADMIN);
+        admin.setId(999L);
+
+        ProductUpdateRequest updateRequest = new ProductUpdateRequest(
+                "Admin Renamed", null, null, null, null, new BigDecimal("199.99"), null, null
+        );
+
+        when(productRepository.findById(100L)).thenReturn(Optional.of(product));
+        when(userRepository.findById(999L)).thenReturn(Optional.of(admin));
+        when(productRepository.save(any(Product.class))).thenReturn(product);
+
+        ProductResponse response = productService.updateProduct(100L, 999L, updateRequest);
+
+        assertThat(response.getName()).isEqualTo("Admin Renamed");
+        assertThat(response.getPrice()).isEqualTo(new BigDecimal("199.99"));
+    }
+
+    @Test
+    @DisplayName("updateProduct fails with blank name")
+    void updateProductBlankNameFails() {
+        ProductUpdateRequest updateRequest = new ProductUpdateRequest("   ", null, null, null, null, null, null, null);
+
+        when(productRepository.findById(100L)).thenReturn(Optional.of(product));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(seller));
+
+        assertThatThrownBy(() -> productService.updateProduct(100L, 10L, updateRequest))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Product name cannot be blank");
+    }
+
+    @Test
+    @DisplayName("deleteProduct deactivates product successfully")
+    void deleteProductSuccess() {
+        when(productRepository.findById(100L)).thenReturn(Optional.of(product));
+        when(userRepository.findById(10L)).thenReturn(Optional.of(seller));
+
+        productService.deleteProduct(100L, 10L);
+
+        assertThat(product.isActive()).isFalse();
+        verify(productRepository).save(product);
+    }
 }
