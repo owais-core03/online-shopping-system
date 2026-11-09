@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Details - ShopEase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <div class="breadcrumb">
+      <a href="index.html">Home</a>
+      <span class="breadcrumb-sep">/</span>
+      <a href="orders.html">My Orders</a>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current" id="crumb-order">Order Details</span>
+    </div>
+
+    <div id="order-loading" class="loading-state">
+      <div class="spinner spinner-lg"></div>
+      <p>Loading order details...</p>
+    </div>
+
+    <div id="order-view" class="hidden">
+
+      <!-- Header Banner -->
+      <div class="card mb-3" style="padding: 1.5rem;">
+        <div class="d-flex justify-between align-center flex-wrap gap-2">
+          <div>
+            <h2 id="order-title">Order #</h2>
+            <div class="text-small text-muted mt-1">Placed on <span id="order-date">—</span></div>
+          </div>
+          <div class="d-flex align-center gap-1" id="status-badges"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="grid grid-3">
+          <div>
+            <div class="text-small text-muted">Checkout Reference</div>
+            <code id="ref-checkout" class="fw-bold">—</code>
+          </div>
+          <div>
+            <div class="text-small text-muted">Stock Reservation Code</div>
+            <code id="ref-reservation" class="fw-bold">—</code>
+          </div>
+          <div>
+            <div class="text-small text-muted">Reservation Expiration</div>
+            <span id="ref-expires" class="text-small">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout -->
+      <div class="grid" style="grid-template-columns: 1.4fr 1fr; gap: 2rem; align-items: start;">
+
+        <!-- Left: Items & Delivery Details -->
+        <div>
+          <!-- Ordered Items Table -->
+          <div class="card mb-3">
+            <div class="card-header">
+              <h3>Purchased Items</h3>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Price</th>
+                    <th>Qty</th>
+                    <th>Subtotal</th>
+                    <th>Discount</th>
+                    <th>Net Paid</th>
+                  </tr>
+                </thead>
+                <tbody id="order-items-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Shipping Address -->
+          <div class="card" style="padding: 1.5rem;">
+            <h3 class="mb-2">📍 Delivery Destination</h3>
+            <div id="delivery-address-box" class="summary-box">
+              <strong id="addr-name">—</strong><br />
+              <span id="addr-phone" class="text-muted text-small">Phone: —</span><br />
+              <span id="addr-street1">—</span><br />
+              <span id="addr-street2"></span>
+              <span id="addr-location">—</span><br />
+              <span id="addr-country">India</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Payment & Summary -->
+        <div>
+          <div class="card" style="padding: 1.5rem;">
+            <h3 class="mb-2">Payment Breakdown</h3>
+
+            <div class="summary-box mb-2">
+              <div class="summary-row">
+                <span>Subtotal:</span>
+                <span id="sum-subtotal">₹0.00</span>
+              </div>
+              <div class="summary-row discount" id="sum-discount-row">
+                <span>Coupon (<span id="sum-coupon"></span>):</span>
+                <span id="sum-discount">-₹0.00</span>
+              </div>
+              <div class="summary-row">
+                <span>Shipping Fee:</span>
+                <span id="sum-shipping">₹0.00</span>
+              </div>
+              <div class="summary-row total">
+                <span>Final Paid / Payable:</span>
+                <span id="sum-total" class="text-primary">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="mb-2">
+              <div class="text-small text-muted">Selected Payment Method:</div>
+              <strong id="sum-method" class="text-primary">—</strong>
+            </div>
+
+            <div id="payment-action-card" class="mt-2 hidden">
+              <div class="alert alert-warning mb-2">
+                <span class="alert-icon">⚠️</span>
+                <div class="text-small">
+                  Payment for this order has not yet been completed.
+                </div>
+              </div>
+              <a href="#" id="pay-now-btn" class="btn btn-primary btn-full">
+                Proceed to Payment ➔
+              </a>
+            </div>
+
+            <a href="orders.html" class="btn btn-secondary btn-full btn-sm mt-2">
+              ← Back to All Orders
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  async function loadOrderDetails() {
+    if (!requireAuth()) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('orderId');
+
+    if (!orderId) {
+      Toast.error('Order ID is required');
+      window.location.href = 'orders.html';
+      return;
+    }
+
+    try {
+      const res = await OrderAPI.get(orderId);
+      if (!res || !res.success || !res.data) {
+        throw new Error(res?.message || 'Order not found');
+      }
+
+      const order = res.data;
+      let currentPayStatus = order.paymentStatus || 'PENDING';
+
+      // Attempt live payment status check
+      try {
+        const payRes = await PaymentAPI.getStatus(orderId);
+        if (payRes && payRes.success && payRes.data) {
+          currentPayStatus = payRes.data.paymentStatus;
+        }
+      } catch (e) {
+        // Payment status check optional
+      }
+
+      document.getElementById('order-title').textContent = `Order #${order.orderNumber || order.id}`;
+      document.getElementById('crumb-order').textContent = `Order #${order.orderNumber || order.id}`;
+      document.getElementById('order-date').textContent = formatDate(order.createdAt);
+
+      // Badges
+      document.getElementById('status-badges').innerHTML = `
+        ${orderStatusBadge(order.orderStatus || 'PAYMENT_PENDING')}
+        ${paymentStatusBadge(currentPayStatus)}
+      `;
+
+      // References
+      document.getElementById('ref-checkout').textContent = order.orderNumber || '—';
+      document.getElementById('ref-reservation').textContent = order.id ? `#ORD-${order.id}` : '—';
+      document.getElementById('ref-expires').textContent = order.updatedAt ? formatDate(order.updatedAt) : 'N/A';
+
+      // Items Table
+      const tbody = document.getElementById('order-items-body');
+      tbody.innerHTML = '';
+      const items = order.items || [];
+
+      items.forEach(it => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <strong>${it.productName || 'Product #' + it.productId}</strong>
+          </td>
+          <td>${formatCurrency(it.unitPrice)}</td>
+          <td>${it.quantity}</td>
+          <td>${formatCurrency(it.grossAmount || (it.unitPrice * it.quantity))}</td>
+          <td class="text-success">${it.allocatedDiscount ? `-${formatCurrency(it.allocatedDiscount)}` : '—'}</td>
+          <td class="fw-bold text-primary">${formatCurrency(it.netPaidAmount || it.grossAmount || (it.unitPrice * it.quantity))}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Address
+      if (order.deliveryAddress) {
+        const a = order.deliveryAddress;
+        document.getElementById('addr-name').textContent = a.recipientName || '—';
+        document.getElementById('addr-phone').textContent = `Phone: ${a.phoneNumber || '—'}`;
+        document.getElementById('addr-street1').textContent = a.streetLine1 || '';
+        document.getElementById('addr-street2').textContent = a.streetLine2 ? `${a.streetLine2}, ` : '';
+        document.getElementById('addr-location').textContent = `${a.city || ''}, ${a.state || ''} - ${a.postalCode || ''}`;
+        document.getElementById('addr-country').textContent = a.country || 'India';
+      }
+
+      // Totals
+      document.getElementById('sum-subtotal').textContent = formatCurrency(order.subtotalAmount || 0);
+      document.getElementById('sum-shipping').textContent = formatCurrency(order.shippingFee || 0);
+      document.getElementById('sum-total').textContent = formatCurrency(order.totalAmount || 0);
+      document.getElementById('sum-method').textContent = order.paymentMethod || 'CREDIT_CARD';
+
+      if (order.discountAmount && order.discountAmount > 0) {
+        document.getElementById('sum-discount-row').classList.remove('hidden');
+        document.getElementById('sum-coupon').textContent = order.couponCode || 'PROMO';
+        document.getElementById('sum-discount').textContent = `-${formatCurrency(order.discountAmount)}`;
+      } else {
+        document.getElementById('sum-discount-row').classList.add('hidden');
+      }
+
+      // Payment Action Button if pending
+      if (currentPayStatus === 'PENDING' || currentPayStatus === 'FAILED') {
+        const payCard = document.getElementById('payment-action-card');
+        payCard.classList.remove('hidden');
+        document.getElementById('pay-now-btn').href = `payment.html?orderId=${order.id}`;
+      }
+
+      document.getElementById('order-loading').classList.add('hidden');
+      document.getElementById('order-view').classList.remove('hidden');
+
+    } catch (err) {
+      document.getElementById('order-loading').classList.add('hidden');
+      Toast.error(err.message || 'Order not found');
+      setTimeout(() => {
+        window.location.href = 'orders.html';
+      }, 1500);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNavbar('orders');
+    renderFooter();
+    loadOrderDetails();
+  });
+</script>
+</body>
+</html>

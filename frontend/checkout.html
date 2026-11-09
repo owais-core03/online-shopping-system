@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - ShopEase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <div class="breadcrumb">
+      <a href="index.html">Home</a>
+      <span class="breadcrumb-sep">/</span>
+      <a href="cart.html">Cart</a>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Checkout</span>
+    </div>
+
+    <div class="section-header">
+      <h2>Secure Checkout</h2>
+      <p class="section-subtitle">Complete your delivery address and confirm your order details</p>
+    </div>
+
+    <div id="checkout-loading" class="loading-state">
+      <div class="spinner spinner-lg"></div>
+      <p>Verifying cart and preparing checkout...</p>
+    </div>
+
+    <form id="checkout-form" class="grid hidden" style="grid-template-columns: 1.3fr 1fr; gap: 2rem; align-items: start;">
+
+      <!-- Left Column: Shipping & Payment Method -->
+      <div>
+
+        <!-- Address Card -->
+        <div class="card mb-3" style="padding: 1.5rem;">
+          <h3 class="mb-2">📍 1. Delivery Address</h3>
+
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label class="form-label" for="recipientName">Recipient Name <span class="required">*</span></label>
+              <input type="text" id="recipientName" class="form-control" placeholder="John Doe" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="phoneNumber">Contact Phone <span class="required">*</span></label>
+              <input type="tel" id="phoneNumber" class="form-control" placeholder="9876543210" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="streetLine1">Street Address 1 <span class="required">*</span></label>
+            <input type="text" id="streetLine1" class="form-control" placeholder="Flat / House No., Apartment, Street" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="streetLine2">Street Address 2 (Optional)</label>
+            <input type="text" id="streetLine2" class="form-control" placeholder="Landmark, Area" />
+          </div>
+
+          <div class="grid grid-3">
+            <div class="form-group">
+              <label class="form-label" for="city">City <span class="required">*</span></label>
+              <input type="text" id="city" class="form-control" placeholder="City" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="state">State <span class="required">*</span></label>
+              <input type="text" id="state" class="form-control" placeholder="State" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="postalCode">Postal PIN Code <span class="required">*</span></label>
+              <input type="text" id="postalCode" class="form-control" placeholder="560001" pattern="^[0-9]{5,6}$" required />
+            </div>
+          </div>
+
+          <div class="form-group mb-0">
+            <label class="form-label" for="country">Country</label>
+            <input type="text" id="country" class="form-control" value="India" required />
+          </div>
+        </div>
+
+        <!-- Payment Method Choice -->
+        <div class="card" style="padding: 1.5rem;">
+          <h3 class="mb-2">💳 2. Payment Method</h3>
+
+          <div class="form-group">
+            <label class="form-label">Select Preferred Payment Mode <span class="required">*</span></label>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;" class="mt-1">
+              <label class="card d-flex align-center gap-2 p-2" style="cursor: pointer;">
+                <input type="radio" name="paymentMethod" value="CREDIT_CARD" checked />
+                <div>
+                  <strong>Credit Card</strong>
+                  <div class="text-small text-muted">Visa, Mastercard, RuPay Cards</div>
+                </div>
+              </label>
+
+              <label class="card d-flex align-center gap-2 p-2" style="cursor: pointer;">
+                <input type="radio" name="paymentMethod" value="DEBIT_CARD" />
+                <div>
+                  <strong>Debit Card</strong>
+                  <div class="text-small text-muted">All major banks supported</div>
+                </div>
+              </label>
+
+              <label class="card d-flex align-center gap-2 p-2" style="cursor: pointer;">
+                <input type="radio" name="paymentMethod" value="UPI" />
+                <div>
+                  <strong>UPI / Instant Transfer</strong>
+                  <div class="text-small text-muted">Google Pay, PhonePe, Paytm, BHIM</div>
+                </div>
+              </label>
+
+              <label class="card d-flex align-center gap-2 p-2" style="cursor: pointer;">
+                <input type="radio" name="paymentMethod" value="CASH_ON_DELIVERY" />
+                <div>
+                  <strong>Cash on Delivery (COD)</strong>
+                  <div class="text-small text-muted">Pay upon doorstep package arrival</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Right Column: Cart Review & Coupons & Summary -->
+      <div>
+        <div class="card" style="padding: 1.5rem;">
+          <h3 class="mb-2">📦 Order Summary</h3>
+
+          <!-- Items list -->
+          <div id="checkout-items-list" class="mb-2" style="max-height: 240px; overflow-y: auto;"></div>
+
+          <div class="divider"></div>
+
+          <!-- Coupon Code Section -->
+          <div class="mb-2">
+            <label class="form-label" for="coupon-code-input">Have a Promo Coupon?</label>
+            <div class="d-flex gap-1">
+              <input type="text" id="coupon-code-input" class="form-control" placeholder="ENTER CODE" style="text-transform: uppercase;" />
+              <button type="button" id="apply-coupon-btn" class="btn btn-secondary">Apply</button>
+            </div>
+            <div id="coupon-feedback" class="text-small mt-1 hidden"></div>
+          </div>
+
+          <!-- Final Calculation Breakdown -->
+          <div class="summary-box mb-2">
+            <div class="summary-row">
+              <span>Cart Subtotal:</span>
+              <span id="chk-subtotal">₹0.00</span>
+            </div>
+            <div class="summary-row discount hidden" id="chk-discount-row">
+              <span>Promo Discount (<span id="chk-coupon-name"></span>):</span>
+              <span id="chk-discount">-₹0.00</span>
+            </div>
+            <div class="summary-row">
+              <span>Standard Shipping:</span>
+              <span id="chk-shipping">₹0.00</span>
+            </div>
+            <div class="summary-row total">
+              <span>Payable Total:</span>
+              <span id="chk-total" class="text-primary">₹0.00</span>
+            </div>
+          </div>
+
+          <button type="submit" id="submit-checkout-btn" class="btn btn-primary btn-full btn-lg">
+            Place Order & Proceed to Pay ➔
+          </button>
+        </div>
+      </div>
+
+    </form>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  let currentCart = null;
+  let appliedCouponCode = null;
+  let appliedDiscount = 0;
+
+  async function loadCheckoutData() {
+    if (!requireAuth()) return;
+
+    const loadingEl = document.getElementById('checkout-loading');
+    const formEl = document.getElementById('checkout-form');
+
+    try {
+      const res = await CartAPI.get();
+      loadingEl.classList.add('hidden');
+
+      if (!res || !res.success || !res.data || !res.data.items || res.data.items.length === 0) {
+        Toast.warning('Your shopping cart is empty. Add products first.');
+        window.location.href = 'products.html';
+        return;
+      }
+
+      currentCart = res.data;
+      formEl.classList.remove('hidden');
+
+      // Pre-fill user data if available
+      const user = Auth.getUser();
+      if (user) {
+        if (user.fullName) document.getElementById('recipientName').value = user.fullName;
+      }
+
+      renderCheckoutItems(currentCart.items);
+      recalculateTotals();
+
+    } catch (err) {
+      loadingEl.classList.add('hidden');
+      Toast.error(err.message || 'Failed to initialize checkout');
+    }
+  }
+
+  function renderCheckoutItems(items) {
+    const container = document.getElementById('checkout-items-list');
+    container.innerHTML = '';
+
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'd-flex justify-between align-center mb-1 text-small';
+      div.innerHTML = `
+        <div>
+          <span class="fw-bold">${item.productName}</span>
+          <span class="text-muted"> × ${item.quantity}</span>
+        </div>
+        <div class="fw-bold">${formatCurrency(item.lineTotal)}</div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function recalculateTotals() {
+    const subtotal = currentCart.subtotal || 0;
+    const shipping = currentCart.shippingFee || 0;
+    const total = Math.max(0, subtotal - appliedDiscount + shipping);
+
+    document.getElementById('chk-subtotal').textContent = formatCurrency(subtotal);
+    document.getElementById('chk-shipping').textContent = formatCurrency(shipping);
+    document.getElementById('chk-total').textContent = formatCurrency(total);
+
+    const discountRow = document.getElementById('chk-discount-row');
+    if (appliedDiscount > 0) {
+      discountRow.classList.remove('hidden');
+      document.getElementById('chk-coupon-name').textContent = appliedCouponCode;
+      document.getElementById('chk-discount').textContent = `-${formatCurrency(appliedDiscount)}`;
+    } else {
+      discountRow.classList.add('hidden');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNavbar('checkout');
+    renderFooter();
+
+    // Coupon Apply
+    const couponInput = document.getElementById('coupon-code-input');
+    const applyCouponBtn = document.getElementById('apply-coupon-btn');
+    const couponFeedback = document.getElementById('coupon-feedback');
+
+    applyCouponBtn.addEventListener('click', async () => {
+      const code = couponInput.value.trim().toUpperCase();
+      if (!code) {
+        Toast.warning('Please enter a coupon code.');
+        return;
+      }
+
+      setLoadingBtn(applyCouponBtn, true, 'Verifying...');
+      couponFeedback.classList.add('hidden');
+
+      try {
+        const res = await CheckoutAPI.applyCoupon(code);
+        if (res && res.success && res.data) {
+          appliedCouponCode = res.data.couponCode;
+          appliedDiscount = res.data.discountAmount || 0;
+          couponFeedback.textContent = `Coupon "${appliedCouponCode}" verified: Saved ${formatCurrency(appliedDiscount)}!`;
+          couponFeedback.className = 'text-small mt-1 text-success';
+          couponFeedback.classList.remove('hidden');
+          recalculateTotals();
+          Toast.success('Coupon applied successfully!');
+        } else {
+          throw new Error(res?.message || 'Invalid coupon code');
+        }
+      } catch (err) {
+        appliedCouponCode = null;
+        appliedDiscount = 0;
+        recalculateTotals();
+        couponFeedback.textContent = err.message || 'Invalid or expired coupon';
+        couponFeedback.className = 'text-small mt-1 text-danger';
+        couponFeedback.classList.remove('hidden');
+      } finally {
+        setLoadingBtn(applyCouponBtn, false);
+      }
+    });
+
+    // Form Submit
+    document.getElementById('checkout-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const recipientName = document.getElementById('recipientName').value.trim();
+      const phoneNumber = document.getElementById('phoneNumber').value.trim();
+      const streetLine1 = document.getElementById('streetLine1').value.trim();
+      const streetLine2 = document.getElementById('streetLine2').value.trim();
+      const city = document.getElementById('city').value.trim();
+      const state = document.getElementById('state').value.trim();
+      const postalCode = document.getElementById('postalCode').value.trim();
+      const country = document.getElementById('country').value.trim();
+
+      const paymentMethodRadio = document.querySelector('input[name="paymentMethod"]:checked');
+      const paymentMethod = paymentMethodRadio ? paymentMethodRadio.value : 'CREDIT_CARD';
+
+      if (!recipientName || !phoneNumber || !streetLine1 || !city || !state || !postalCode) {
+        Toast.error('Please complete all required delivery address fields.');
+        return;
+      }
+
+      const checkoutPayload = {
+        deliveryAddress: {
+          recipientName,
+          phoneNumber,
+          streetLine1,
+          streetLine2: streetLine2 || null,
+          city,
+          state,
+          postalCode,
+          country: country || 'India'
+        },
+        paymentMethod,
+        couponCode: appliedCouponCode || null
+      };
+
+      const submitBtn = document.getElementById('submit-checkout-btn');
+      setLoadingBtn(submitBtn, true, 'Confirming Stock & Placing Order...');
+
+      try {
+        const res = await CheckoutAPI.checkout(checkoutPayload);
+        if (res && res.success && res.data) {
+          const order = res.data;
+          Toast.success(`Order placed! Order #: ${order.orderNumber}`);
+
+          // Redirect to Payment Screen
+          setTimeout(() => {
+            window.location.href = `payment.html?orderId=${order.orderId}`;
+          }, 800);
+        } else {
+          Toast.error(res?.message || 'Checkout failed');
+          setLoadingBtn(submitBtn, false);
+        }
+      } catch (err) {
+        Toast.error(err.message || 'Checkout failed due to stock reservation or server error');
+        setLoadingBtn(submitBtn, false);
+      }
+    });
+
+    loadCheckoutData();
+  });
+</script>
+</body>
+</html>

@@ -43,6 +43,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/payments/webhook").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/seller/my-products").hasAnyRole("SELLER", "ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                .requestMatchers("/", "/index.html", "/*.html", "/css/**", "/js/**", "/favicon.ico").permitAll()
                 .anyRequest().authenticated()
             );
 

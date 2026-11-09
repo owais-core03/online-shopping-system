@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Registration - ShopEase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .strength-meter {
+      height: 4px;
+      background: var(--gray-200);
+      border-radius: var(--radius-full);
+      margin-top: 6px;
+      overflow: hidden;
+      display: flex;
+    }
+    .strength-bar {
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease, background-color 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-wrapper d-flex align-center justify-between" style="justify-content: center; min-height: calc(100vh - 140px);">
+  <div class="container" style="max-width: 480px;">
+
+    <div class="card">
+      <div class="card-header text-center" style="background: var(--white); padding-bottom: 0.5rem;">
+        <div style="font-size: 2.2rem; margin-bottom: 0.25rem;">🛍️</div>
+        <h2>Create Account</h2>
+        <p class="text-muted text-small">Join ShopEase to start shopping</p>
+      </div>
+
+      <div class="card-body">
+        <form id="register-form" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="fullName">Full Name <span class="required">*</span></label>
+            <input type="text" id="fullName" class="form-control" placeholder="John Doe" required />
+            <div class="form-error hidden" id="name-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address <span class="required">*</span></label>
+            <input type="email" id="email" class="form-control" placeholder="name@example.com" required autocomplete="email" />
+            <div class="form-error hidden" id="email-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="phoneNumber">Phone Number</label>
+            <input type="tel" id="phoneNumber" class="form-control" placeholder="9876543210" />
+            <div class="form-hint">Optional. Max 20 digits.</div>
+            <div class="form-error hidden" id="phone-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Password <span class="required">*</span></label>
+            <input type="password" id="password" class="form-control" placeholder="At least 6 characters" required autocomplete="new-password" />
+            <div class="strength-meter">
+              <div class="strength-bar" id="strength-bar"></div>
+            </div>
+            <div class="form-hint" id="strength-label">Minimum 6 characters</div>
+            <div class="form-error hidden" id="password-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="confirmPassword">Confirm Password <span class="required">*</span></label>
+            <input type="password" id="confirmPassword" class="form-control" placeholder="Repeat your password" required autocomplete="new-password" />
+            <div class="form-error hidden" id="confirm-error"></div>
+          </div>
+
+          <button type="submit" id="register-btn" class="btn btn-primary btn-full btn-lg mt-2">
+            Create Customer Account
+          </button>
+        </form>
+      </div>
+
+      <div class="card-footer text-center">
+        <p class="text-small text-muted">
+          Already have an account? <a href="login.html" class="fw-bold">Sign in here</a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (Auth.isLoggedIn()) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    renderNavbar('register');
+    renderFooter();
+
+    const form = document.getElementById('register-form');
+    const nameInput = document.getElementById('fullName');
+    const emailInput = document.getElementById('email');
+    const phoneInput = document.getElementById('phoneNumber');
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirmPassword');
+    const submitBtn = document.getElementById('register-btn');
+    const strengthBar = document.getElementById('strength-bar');
+    const strengthLabel = document.getElementById('strength-label');
+
+    // Password strength indicator
+    passwordInput.addEventListener('input', () => {
+      const val = passwordInput.value;
+      let score = 0;
+      if (val.length >= 6) score++;
+      if (val.length >= 10) score++;
+      if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+
+      if (val.length === 0) {
+        strengthBar.style.width = '0%';
+        strengthLabel.textContent = 'Minimum 6 characters';
+        strengthLabel.style.color = 'var(--gray-500)';
+      } else if (score <= 1) {
+        strengthBar.style.width = '25%';
+        strengthBar.style.backgroundColor = 'var(--danger)';
+        strengthLabel.textContent = 'Weak password';
+        strengthLabel.style.color = 'var(--danger)';
+      } else if (score <= 3) {
+        strengthBar.style.width = '60%';
+        strengthBar.style.backgroundColor = 'var(--warning)';
+        strengthLabel.textContent = 'Moderate password';
+        strengthLabel.style.color = 'var(--warning)';
+      } else {
+        strengthBar.style.width = '100%';
+        strengthBar.style.backgroundColor = 'var(--success)';
+        strengthLabel.textContent = 'Strong password';
+        strengthLabel.style.color = 'var(--success)';
+      }
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Clear errors
+      document.querySelectorAll('.form-error').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.form-control').forEach(el => el.classList.remove('is-invalid'));
+
+      const fullName = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const phoneNumber = phoneInput.value.trim();
+      const password = passwordInput.value;
+      const confirmPassword = confirmInput.value;
+      let hasError = false;
+
+      if (!fullName) {
+        document.getElementById('name-error').textContent = 'Full name is required';
+        document.getElementById('name-error').classList.remove('hidden');
+        nameInput.classList.add('is-invalid');
+        hasError = true;
+      }
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        document.getElementById('email-error').textContent = 'Valid email is required';
+        document.getElementById('email-error').classList.remove('hidden');
+        emailInput.classList.add('is-invalid');
+        hasError = true;
+      }
+
+      if (!password || password.length < 6) {
+        document.getElementById('password-error').textContent = 'Password must be at least 6 characters';
+        document.getElementById('password-error').classList.remove('hidden');
+        passwordInput.classList.add('is-invalid');
+        hasError = true;
+      }
+
+      if (password !== confirmPassword) {
+        document.getElementById('confirm-error').textContent = 'Passwords do not match';
+        document.getElementById('confirm-error').classList.remove('hidden');
+        confirmInput.classList.add('is-invalid');
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      setLoadingBtn(submitBtn, true, 'Creating Account...');
+
+      try {
+        const payload = {
+          email,
+          password,
+          fullName,
+          phoneNumber: phoneNumber || null
+        };
+
+        const res = await AuthAPI.register(payload);
+        if (res && res.success && res.data) {
+          Auth.save(res.data.token, res.data);
+          Toast.success('Account created successfully! Welcome to ShopEase.');
+          setTimeout(() => {
+            window.location.href = 'products.html';
+          }, 800);
+        } else {
+          Toast.error(res?.message || 'Registration failed');
+          setLoadingBtn(submitBtn, false);
+        }
+      } catch (err) {
+        Toast.error(err.message || 'Registration failed. Please check inputs.');
+        setLoadingBtn(submitBtn, false);
+      }
+    });
+  });
+</script>
+</body>
+</html>

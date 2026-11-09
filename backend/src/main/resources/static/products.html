@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop All Products - ShopEase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrapper">
+  <div class="container">
+
+    <div class="breadcrumb">
+      <a href="index.html">Home</a>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Products</span>
+    </div>
+
+    <div class="section-header d-flex justify-between align-center flex-wrap gap-2">
+      <div>
+        <h2>Explore Catalogue</h2>
+        <p class="section-subtitle">Discover premium items at competitive prices</p>
+      </div>
+      <div id="results-count" class="text-muted text-small">Loading products...</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 260px 1fr; gap: 2rem; align-items: start;" class="catalog-layout">
+
+      <!-- Filters Sidebar -->
+      <aside class="card" style="padding: 1.25rem;">
+        <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--gray-200); padding-bottom: 0.5rem;">Filters</h4>
+
+        <div class="form-group">
+          <label class="form-label" for="filter-query">Search Name/Keyword</label>
+          <input type="text" id="filter-query" class="form-control" placeholder="e.g. Wireless, Phone..." />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="filter-category">Category</label>
+          <select id="filter-category" class="form-control">
+            <option value="">All Categories</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Books">Books</option>
+            <option value="Sports">Sports</option>
+            <option value="Home & Kitchen">Home & Kitchen</option>
+            <option value="Beauty">Beauty</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="filter-brand">Brand</label>
+          <input type="text" id="filter-brand" class="form-control" placeholder="e.g. Sony, Apple..." />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="filter-sort">Sort By</label>
+          <select id="filter-sort" class="form-control">
+            <option value="id-asc">Default</option>
+            <option value="price-asc">Price: Low to High</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="name-asc">Product Name (A-Z)</option>
+            <option value="name-desc">Product Name (Z-A)</option>
+            <option value="averageRating-desc">Top Rated</option>
+          </select>
+        </div>
+
+        <button id="reset-filters-btn" class="btn btn-secondary btn-full btn-sm mt-2">
+          Clear Filters
+        </button>
+      </aside>
+
+      <!-- Products Grid & View -->
+      <main>
+        <div id="products-loading" class="loading-state">
+          <div class="spinner spinner-lg"></div>
+          <p>Fetching active products...</p>
+        </div>
+
+        <div id="products-empty" class="empty-state card hidden">
+          <div class="empty-state-icon">🔍</div>
+          <h3>No Products Found</h3>
+          <p>We couldn't find any products matching your active filters. Try adjusting your search query or category.</p>
+          <button id="empty-reset-btn" class="btn btn-outline btn-sm">Clear All Filters</button>
+        </div>
+
+        <div id="products-grid" class="grid grid-auto"></div>
+
+        <!-- Pagination Controls -->
+        <div id="pagination-container" class="pagination hidden">
+          <button id="prev-page-btn" class="page-btn" title="Previous Page">‹</button>
+          <span id="page-indicator" style="font-size: 0.875rem; font-weight: 600; padding: 0 0.5rem;">Page 1</span>
+          <button id="next-page-btn" class="page-btn" title="Next Page">›</button>
+        </div>
+      </main>
+
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  let currentPage = 0;
+  const pageSize = 12;
+  let debounceTimeout = null;
+
+  function getCategoryEmoji(cat) {
+    if (!cat) return '📦';
+    const c = cat.toLowerCase();
+    if (c.includes('elect')) return '💻';
+    if (c.includes('cloth') || c.includes('fashion') || c.includes('apparel')) return '👕';
+    if (c.includes('book')) return '📚';
+    if (c.includes('sport')) return '⚽';
+    if (c.includes('home') || c.includes('kitchen')) return '🍳';
+    if (c.includes('beauty')) return '💄';
+    return '🛍️';
+  }
+
+  async function loadProducts() {
+    const loadingEl = document.getElementById('products-loading');
+    const emptyEl = document.getElementById('products-empty');
+    const gridEl = document.getElementById('products-grid');
+    const countEl = document.getElementById('results-count');
+    const paginationEl = document.getElementById('pagination-container');
+
+    loadingEl.classList.remove('hidden');
+    emptyEl.classList.add('hidden');
+    gridEl.innerHTML = '';
+
+    const query = document.getElementById('filter-query').value.trim();
+    const category = document.getElementById('filter-category').value;
+    const brand = document.getElementById('filter-brand').value.trim();
+    const sortVal = document.getElementById('filter-sort').value.split('-');
+    const sortBy = sortVal[0];
+    const sortDirection = sortVal[1] || 'asc';
+
+    try {
+      const res = await ProductAPI.list({
+        query: query || null,
+        category: category || null,
+        brand: brand || null,
+        page: currentPage,
+        size: pageSize,
+        sortBy,
+        sortDirection
+      });
+
+      loadingEl.classList.add('hidden');
+
+      if (!res || !res.success || !res.data || res.data.length === 0) {
+        emptyEl.classList.remove('hidden');
+        countEl.textContent = 'Showing 0 items';
+        paginationEl.classList.add('hidden');
+        return;
+      }
+
+      const products = res.data;
+      countEl.textContent = `Showing ${products.length} products`;
+
+      products.forEach(p => {
+        const isOutOfStock = p.availableStock <= 0 || !p.active;
+        const card = document.createElement('div');
+        card.className = 'product-card';
+
+        card.innerHTML = `
+          <div class="product-card-image" onclick="window.location.href='product-details.html?id=${p.id}'">
+            <span>${getCategoryEmoji(p.category)}</span>
+            ${!p.active ? '<span class="badge badge-danger product-card-badge">Inactive</span>' : (p.availableStock <= 0 ? '<span class="badge badge-danger product-card-badge">Out of Stock</span>' : '')}
+          </div>
+          <div class="product-card-body" onclick="window.location.href='product-details.html?id=${p.id}'">
+            <span class="product-card-category">${p.category || 'General'}</span>
+            <h4 class="product-card-name" title="${p.name}">${p.name}</h4>
+            <span class="product-card-brand">${p.brand || 'Brand'}</span>
+            <div class="product-card-rating">
+              ${renderStars(p.averageRating)}
+              <span class="product-card-rating-text">(${p.reviewCount || 0})</span>
+            </div>
+            <div class="product-card-price">${formatCurrency(p.price)}</div>
+            <span class="product-card-stock ${p.availableStock < 5 ? (p.availableStock <= 0 ? 'out' : 'low') : ''}">
+              ${isOutOfStock ? 'Unavailable' : (p.availableStock < 5 ? `Only ${p.availableStock} left in stock!` : 'In Stock')}
+            </span>
+          </div>
+          <div class="product-card-footer">
+            <button class="btn btn-primary btn-sm add-cart-btn" data-id="${p.id}" ${isOutOfStock ? 'disabled' : ''}>
+              🛒 ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+            </button>
+          </div>
+        `;
+
+        card.querySelector('.add-cart-btn')?.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const btn = e.currentTarget;
+          if (!Auth.isLoggedIn()) {
+            Toast.warning('Please log in as a customer to add items to your cart.');
+            setTimeout(() => {
+              window.location.href = `login.html?redirect=${encodeURIComponent(window.location.href)}`;
+            }, 1000);
+            return;
+          }
+
+          setLoadingBtn(btn, true, 'Adding...');
+          try {
+            await CartAPI.addItem(p.id, 1);
+            Toast.success(`Added "${p.name}" to cart!`);
+            updateCartBadge();
+          } catch (err) {
+            Toast.error(err.message || 'Failed to add item to cart');
+          } finally {
+            setLoadingBtn(btn, false);
+          }
+        });
+
+        gridEl.appendChild(card);
+      });
+
+      // Pagination setup
+      paginationEl.classList.remove('hidden');
+      document.getElementById('page-indicator').textContent = `Page ${currentPage + 1}`;
+      document.getElementById('prev-page-btn').disabled = (currentPage === 0);
+      document.getElementById('next-page-btn').disabled = (products.length < pageSize);
+
+    } catch (err) {
+      loadingEl.classList.add('hidden');
+      Toast.error(err.message || 'Failed to retrieve products');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNavbar('products');
+    renderFooter();
+
+    // Check query param from URL
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('query')) {
+      document.getElementById('filter-query').value = params.get('query');
+    }
+    if (params.get('category')) {
+      document.getElementById('filter-category').value = params.get('category');
+    }
+
+    const triggerFilter = () => {
+      currentPage = 0;
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(loadProducts, 300);
+    };
+
+    document.getElementById('filter-query').addEventListener('input', triggerFilter);
+    document.getElementById('filter-category').addEventListener('change', triggerFilter);
+    document.getElementById('filter-brand').addEventListener('input', triggerFilter);
+    document.getElementById('filter-sort').addEventListener('change', triggerFilter);
+
+    const resetFilters = () => {
+      document.getElementById('filter-query').value = '';
+      document.getElementById('filter-category').value = '';
+      document.getElementById('filter-brand').value = '';
+      document.getElementById('filter-sort').value = 'id-asc';
+      currentPage = 0;
+      loadProducts();
+    };
+
+    document.getElementById('reset-filters-btn').addEventListener('click', resetFilters);
+    document.getElementById('empty-reset-btn').addEventListener('click', resetFilters);
+
+    document.getElementById('prev-page-btn').addEventListener('click', () => {
+      if (currentPage > 0) {
+        currentPage--;
+        loadProducts();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+
+    document.getElementById('next-page-btn').addEventListener('click', () => {
+      currentPage++;
+      loadProducts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    loadProducts();
+  });
+</script>
+</body>
+</html>

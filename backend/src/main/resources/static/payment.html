@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Simulation - ShopEase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrapper">
+  <div class="container" style="max-width: 680px;">
+
+    <div class="breadcrumb">
+      <a href="index.html">Home</a>
+      <span class="breadcrumb-sep">/</span>
+      <a href="orders.html">Orders</a>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Payment Gateway</span>
+    </div>
+
+    <!-- Demo Notice Banner -->
+    <div class="alert alert-info mb-3">
+      <span class="alert-icon">ℹ️</span>
+      <div>
+        <strong>College Demo Payment Gateway:</strong> No real payment cards or financial credentials are required or processed.
+        Simulate gateway callback outcomes below to observe the Spring Boot backend transaction state transitions.
+      </div>
+    </div>
+
+    <!-- Order & Payment Info Card -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-between align-center">
+        <h3>Order Payment</h3>
+        <span id="order-status-badge"></span>
+      </div>
+
+      <div class="card-body">
+        <div class="summary-box mb-3">
+          <div class="summary-row">
+            <span>Order Number:</span>
+            <strong id="display-order-num">—</strong>
+          </div>
+          <div class="summary-row">
+            <span>Payable Amount:</span>
+            <strong id="display-amount" class="text-primary price-large">₹0.00</strong>
+          </div>
+          <div class="summary-row">
+            <span>Payment Method:</span>
+            <span id="display-method" class="badge badge-secondary">—</span>
+          </div>
+          <div class="summary-row">
+            <span>Payment Status:</span>
+            <span id="display-pay-status">—</span>
+          </div>
+          <div class="summary-row" id="reference-row" style="display: none;">
+            <span>Payment Reference:</span>
+            <code id="display-ref" style="font-weight: 600;">—</code>
+          </div>
+        </div>
+
+        <!-- Simulation Actions Section -->
+        <div id="payment-actions-section">
+          <h4 class="mb-1">Select Gateway Simulation Outcome</h4>
+          <p class="text-small text-muted mb-2">
+            Initiate payment through the backend <code>/api/payments/{orderId}/initiate</code> endpoint with configured mock outcome.
+          </p>
+
+          <div class="d-flex gap-2 flex-wrap mb-2">
+            <button id="btn-simulate-success" class="btn btn-success flex-1 btn-lg">
+              ✅ Simulate Successful Payment
+            </button>
+            <button id="btn-simulate-fail" class="btn btn-danger flex-1 btn-lg">
+              ❌ Simulate Payment Failure
+            </button>
+          </div>
+        </div>
+
+        <!-- Polling / Processing Status View -->
+        <div id="processing-view" class="text-center p-3 hidden">
+          <div class="spinner spinner-lg mb-2"></div>
+          <h4 id="proc-title">Contacting Mock Gateway...</h4>
+          <p id="proc-desc" class="text-small text-muted">Checking transaction state with the backend...</p>
+          <button id="manual-refresh-btn" class="btn btn-secondary btn-sm mt-2">Check Status Now</button>
+        </div>
+
+        <!-- Outcome Status Container -->
+        <div id="outcome-container" class="mt-2 hidden"></div>
+
+      </div>
+
+      <div class="card-footer d-flex justify-between align-center">
+        <a href="orders.html" class="btn btn-secondary btn-sm">View All Orders</a>
+        <a href="products.html" class="btn btn-ghost btn-sm">Return to Shop</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  let orderId = null;
+  let currentOrder = null;
+  let activePaymentReference = null;
+  let pollingInterval = null;
+
+  async function initPaymentPage() {
+    if (!requireAuth()) return;
+
+    const params = new URLSearchParams(window.location.search);
+    orderId = params.get('orderId');
+
+    if (!orderId) {
+      Toast.error('Missing order ID.');
+      window.location.href = 'orders.html';
+      return;
+    }
+
+    try {
+      const orderRes = await OrderAPI.get(orderId);
+      if (orderRes && orderRes.success && orderRes.data) {
+        currentOrder = orderRes.data;
+        document.getElementById('display-order-num').textContent = currentOrder.orderNumber || `#${orderId}`;
+        document.getElementById('display-amount').textContent = formatCurrency(currentOrder.totalAmount);
+        document.getElementById('display-method').textContent = currentOrder.paymentMethod || 'CREDIT_CARD';
+        document.getElementById('display-pay-status').innerHTML = paymentStatusBadge(currentOrder.paymentStatus || 'PENDING');
+        document.getElementById('order-status-badge').innerHTML = orderStatusBadge(currentOrder.orderStatus || 'PAYMENT_PENDING');
+      }
+    } catch (e) {
+      console.warn('Could not load order details from server', e);
+    }
+
+    // Check remote status from server
+    await checkPaymentStatus(false);
+  }
+
+  async function checkPaymentStatus(notify = true) {
+    try {
+      const res = await PaymentAPI.getStatus(orderId);
+      if (res && res.success && res.data) {
+        const tx = res.data;
+        activePaymentReference = tx.paymentReference;
+
+        document.getElementById('reference-row').style.display = 'flex';
+        document.getElementById('display-ref').textContent = tx.paymentReference;
+        document.getElementById('display-pay-status').innerHTML = paymentStatusBadge(tx.paymentStatus);
+
+        if (tx.paymentStatus === 'CAPTURED') {
+          showSuccessOutcome(tx);
+          clearInterval(pollingInterval);
+        } else if (tx.paymentStatus === 'FAILED') {
+          showFailureOutcome(tx);
+          clearInterval(pollingInterval);
+        }
+
+        if (notify) Toast.info(`Payment status is ${tx.paymentStatus}`);
+      }
+    } catch (err) {
+      // Transaction might not exist yet if not initiated
+      console.log('No prior payment transaction initiated for this order yet.');
+    }
+  }
+
+  async function triggerSimulation(simulatedOutcome) {
+    const successBtn = document.getElementById('btn-simulate-success');
+    const failBtn = document.getElementById('btn-simulate-fail');
+    const procView = document.getElementById('processing-view');
+    const actionsSection = document.getElementById('payment-actions-section');
+
+    successBtn.disabled = true;
+    failBtn.disabled = true;
+    actionsSection.classList.add('hidden');
+    procView.classList.remove('hidden');
+
+    try {
+      const initRes = await PaymentAPI.initiate(orderId, {
+        paymentMethod: currentOrder ? currentOrder.paymentMethod : 'CREDIT_CARD',
+        simulatedOutcome: simulatedOutcome
+      });
+
+      if (!initRes || !initRes.success || !initRes.data) {
+        throw new Error(initRes?.message || 'Initiation failed');
+      }
+
+      const tx = initRes.data;
+      activePaymentReference = tx.paymentReference;
+      document.getElementById('reference-row').style.display = 'flex';
+      document.getElementById('display-ref').textContent = tx.paymentReference;
+
+      Toast.info(`Payment initiated (${tx.paymentReference}). Processing gateway response...`);
+
+      // Start status verification polling
+      let pollCount = 0;
+      clearInterval(pollingInterval);
+
+      pollingInterval = setInterval(async () => {
+        pollCount++;
+        try {
+          const statusRes = await PaymentAPI.getStatus(orderId);
+          if (statusRes && statusRes.success && statusRes.data) {
+            const st = statusRes.data;
+            document.getElementById('display-pay-status').innerHTML = paymentStatusBadge(st.paymentStatus);
+
+            if (st.paymentStatus === 'CAPTURED') {
+              clearInterval(pollingInterval);
+              procView.classList.add('hidden');
+              showSuccessOutcome(st);
+              Toast.success('Payment successfully captured!');
+            } else if (st.paymentStatus === 'FAILED') {
+              clearInterval(pollingInterval);
+              procView.classList.add('hidden');
+              showFailureOutcome(st);
+              Toast.error('Payment simulation failed.');
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+
+        if (pollCount >= 10) {
+          clearInterval(pollingInterval);
+          procView.classList.add('hidden');
+          actionsSection.classList.remove('hidden');
+          successBtn.disabled = false;
+          failBtn.disabled = false;
+          Toast.warning('Status polling timed out. Click "Check Status Now" to refresh.');
+        }
+      }, 1500);
+
+    } catch (err) {
+      procView.classList.add('hidden');
+      actionsSection.classList.remove('hidden');
+      successBtn.disabled = false;
+      failBtn.disabled = false;
+      Toast.error(err.message || 'Payment initiation error');
+    }
+  }
+
+  function showSuccessOutcome(tx) {
+    const outcome = document.getElementById('outcome-container');
+    outcome.className = 'alert alert-success mt-2 visible';
+    outcome.innerHTML = `
+      <span class="alert-icon">🎉</span>
+      <div>
+        <h4>Payment Completed Successfully!</h4>
+        <p class="text-small">
+          Transaction <strong>${tx.paymentReference}</strong> has been CAPTURED. Stock reservations confirmed and order moved to PROCESSING.
+        </p>
+        <a href="order-details.html?orderId=${orderId}" class="btn btn-primary btn-sm mt-1">View Confirmed Order</a>
+      </div>
+    `;
+    document.getElementById('payment-actions-section').classList.add('hidden');
+  }
+
+  function showFailureOutcome(tx) {
+    const outcome = document.getElementById('outcome-container');
+    outcome.className = 'alert alert-danger mt-2 visible';
+    outcome.innerHTML = `
+      <span class="alert-icon">❌</span>
+      <div>
+        <h4>Payment Transaction Failed</h4>
+        <p class="text-small">
+          Reason: <em>${tx.failureReason || 'Transaction rejected by gateway simulation'}</em>. Stock reservations have been safely released back to available inventory.
+        </p>
+        <button id="retry-pay-btn" class="btn btn-outline btn-sm mt-1">Try Payment Again</button>
+      </div>
+    `;
+    document.getElementById('payment-actions-section').classList.add('hidden');
+    document.getElementById('retry-pay-btn')?.addEventListener('click', () => {
+      outcome.classList.add('hidden');
+      document.getElementById('payment-actions-section').classList.remove('hidden');
+      document.getElementById('btn-simulate-success').disabled = false;
+      document.getElementById('btn-simulate-fail').disabled = false;
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNavbar('orders');
+    renderFooter();
+
+    document.getElementById('btn-simulate-success').addEventListener('click', () => triggerSimulation('SUCCESS'));
+    document.getElementById('btn-simulate-fail').addEventListener('click', () => triggerSimulation('FAIL'));
+    document.getElementById('manual-refresh-btn').addEventListener('click', () => checkPaymentStatus(true));
+
+    initPaymentPage();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Login - ShopEase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="page-wrapper d-flex align-center justify-between" style="justify-content: center; min-height: calc(100vh - 140px);">
+  <div class="container" style="max-width: 440px;">
+
+    <div id="session-alert" class="alert alert-warning hidden">
+      <span class="alert-icon">⚠️</span>
+      <div>Your session has expired. Please log in again to continue.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header text-center" style="background: var(--white); padding-bottom: 0.5rem;">
+        <div style="font-size: 2.2rem; margin-bottom: 0.25rem;">🛍️</div>
+        <h2>Welcome Back</h2>
+        <p class="text-muted text-small">Sign in to your customer account</p>
+      </div>
+
+      <div class="card-body">
+        <form id="login-form" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address <span class="required">*</span></label>
+            <input type="email" id="email" class="form-control" placeholder="name@example.com" required autocomplete="email" />
+            <div class="form-error hidden" id="email-error"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Password <span class="required">*</span></label>
+            <input type="password" id="password" class="form-control" placeholder="••••••••" required autocomplete="current-password" />
+            <div class="form-error hidden" id="password-error"></div>
+          </div>
+
+          <button type="submit" id="login-btn" class="btn btn-primary btn-full btn-lg mt-2">
+            Sign In
+          </button>
+        </form>
+      </div>
+
+      <div class="card-footer text-center">
+        <p class="text-small text-muted">
+          Don't have an account? <a href="register.html" class="fw-bold">Create account</a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Check if already logged in
+    if (Auth.isLoggedIn()) {
+      window.location.href = 'index.html';
+      return;
+    }
+
+    renderNavbar('login');
+    renderFooter();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('expired') === '1') {
+      document.getElementById('session-alert').classList.remove('hidden');
+    }
+
+    const form = document.getElementById('login-form');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const submitBtn = document.getElementById('login-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Clear errors
+      document.getElementById('email-error').classList.add('hidden');
+      document.getElementById('password-error').classList.add('hidden');
+      emailInput.classList.remove('is-invalid');
+      passwordInput.classList.remove('is-invalid');
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      let hasError = false;
+
+      if (!email) {
+        document.getElementById('email-error').textContent = 'Email is required';
+        document.getElementById('email-error').classList.remove('hidden');
+        emailInput.classList.add('is-invalid');
+        hasError = true;
+      }
+
+      if (!password) {
+        document.getElementById('password-error').textContent = 'Password is required';
+        document.getElementById('password-error').classList.remove('hidden');
+        passwordInput.classList.add('is-invalid');
+        hasError = true;
+      }
+
+      if (hasError) return;
+
+      setLoadingBtn(submitBtn, true, 'Signing in...');
+
+      try {
+        const response = await AuthAPI.login({ email, password });
+        if (response && response.success && response.data) {
+          const authData = response.data;
+
+          // Role check
+          if (authData.role !== 'ROLE_CUSTOMER' && authData.role !== 'CUSTOMER') {
+            Toast.warning('Warning: You are logged in with role ' + authData.role + '. Some customer features may differ.');
+          }
+
+          Auth.save(authData.token, authData);
+          Toast.success('Login successful! Redirecting...');
+
+          const redirect = urlParams.get('redirect') || 'index.html';
+          setTimeout(() => {
+            window.location.href = redirect;
+          }, 800);
+        } else {
+          Toast.error(response?.message || 'Invalid credentials');
+          setLoadingBtn(submitBtn, false);
+        }
+      } catch (err) {
+        Toast.error(err.message || 'Login failed. Please try again.');
+        setLoadingBtn(submitBtn, false);
+      }
+    });
+  });
+</script>
+</body>
+</html>
