@@ -16,5 +16,9 @@ public interface StockReservationRepository extends JpaRepository<StockReservati
 
     List<StockReservation> findByCustomerId(Long customerId);
 
+    Optional<StockReservation> findByCheckoutReference(String checkoutReference);
+
+    Optional<StockReservation> findTopByCustomerIdOrderByCreatedAtDesc(Long customerId);
+
     List<StockReservation> findByStatusAndExpiresAtBefore(ReservationStatus status, Instant now);
 }
